@@ -1,109 +1,2618 @@
-🔧 FIXING THE 404 ERROR
-========================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platinum Fire Services - Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
 
-The "404" error you're seeing is NOT breaking your portal!
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(220, 38, 38, 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
 
-What's happening:
------------------
-• Your browser is looking for a "favicon.ico" file
-• Netlify doesn't have one
-• Returns 404 error
-• BUT this doesn't stop the page from loading
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
 
-🧪 LET'S TEST YOUR PORTAL:
-===========================
+        .crimson-gradient {
+            background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%);
+        }
 
-Step 1: Upload Test File
--------------------------
-1. Download "test.html" (attached)
-2. Go to Netlify
-3. Upload test.html to your site
-4. Visit: https://your-site.netlify.app/test.html
-5. See if tests pass
+        .file-item {
+            transition: all 0.3s ease;
+        }
 
-Step 2: Check What Test Shows
-------------------------------
-The test page will tell you:
-✓ If JavaScript is working
-✓ If localStorage is working  
-✓ If your browser is blocking anything
+        .file-item:hover {
+            transform: translateX(5px);
+            background: rgba(139, 0, 0, 0.05);
+        }
+        
+        /* Login page specific styling */
+        .login-card {
+            background: white;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Input styling to match proposal tool */
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="password"],
+        input[type="date"],
+        input[type="url"],
+        textarea,
+        select {
+            background-color: white;
+            border: 1px solid #d1d5db;
+            color: #1f2937;
+        }
+        
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="tel"]:focus,
+        input[type="password"]:focus,
+        input[type="date"]:focus,
+        input[type="url"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #8B0000;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(139, 0, 0, 0.1);
+        }
+        
+        /* Button hover effects */
+        button {
+            transition: all 0.2s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    <div id="app" class="max-w-7xl mx-auto">
+        <!-- Loading indicator -->
+        <div id="loading" style="text-align: center; padding: 100px; font-size: 24px; color: #8B0000;">
+            <div style="margin-bottom: 20px;">🔄 Loading Portal...</div>
+            <div style="font-size: 14px; color: #666;">If this doesn't disappear, check console for errors (F12)</div>
+        </div>
+    </div>
+    
+    <!-- Error Display -->
+    <div id="error-display" style="display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #fee; border: 2px solid #f00; padding: 20px; border-radius: 10px; max-width: 600px; z-index: 10000;">
+        <h3 style="color: #c00; margin-bottom: 10px;">⚠️ Portal Error</h3>
+        <div id="error-message" style="color: #333; font-family: monospace; font-size: 12px;"></div>
+    </div>
 
-Step 3: Based on Results
--------------------------
+    <script>
+        // State Management
+        let state = {
+            mode: 'login', // 'login', 'admin', 'customer'
+            currentUser: null,
+            adminPassword: 'platinum2024', // Change this!
+            customers: [],
+            jobsites: [],
+            workLogs: [],
+            files: [],
+            selectedCustomer: null,
+            selectedJobsite: null,
+            view: 'dashboard', // 'dashboard', 'customers', 'jobsites', 'work', 'files', 'settings'
+            settings: {
+                contactInfo: {
+                    companyName: 'Platinum Fire Services, LLC',
+                    address: '2893 Backman St., Mount Pleasant, South Carolina 29466',
+                    phone: '(240) 291-4163',
+                    officePhone: '(240) 217-3061',
+                    website: 'https://platinum-fs.com',
+                    email: ''
+                }
+            }
+        };
 
-IF TEST PASSES:
-• Your portal SHOULD work
-• The 404 is just the favicon (harmless)
-• Try visiting the main portal again
-• Hard refresh: Ctrl + Shift + R
+        // Storage keys
+        const STORAGE_KEYS = {
+            CUSTOMERS: 'pfs-customers',
+            JOBSITES: 'pfs-jobsites',
+            WORK_LOGS: 'pfs-work-logs',
+            FILES: 'pfs-files',
+            SETTINGS: 'pfs-settings'
+        };
 
-IF TEST FAILS:
-• Screenshot the errors
-• Send me the screenshot
-• We'll fix the real issue
+        // Initialize - Load data from storage
+        async function initializeApp() {
+            try {
+                // Load customers
+                const customersData = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
+                if (customersData) {
+                    state.customers = JSON.parse(customersData);
+                }
 
-🔍 COMMON 404 SOURCES (All Harmless):
-======================================
+                // Load jobsites
+                const jobsitesData = localStorage.getItem(STORAGE_KEYS.JOBSITES);
+                if (jobsitesData) {
+                    state.jobsites = JSON.parse(jobsitesData);
+                }
 
-1. favicon.ico - Browser looking for icon (doesn't break site)
-2. robots.txt - Search engines looking for rules (doesn't break site)  
-3. sitemap.xml - SEO file (doesn't break site)
+                // Load work logs
+                const workLogsData = localStorage.getItem(STORAGE_KEYS.WORK_LOGS);
+                if (workLogsData) {
+                    state.workLogs = JSON.parse(workLogsData);
+                }
 
-None of these stop your portal from working!
+                // Load files
+                const filesData = localStorage.getItem(STORAGE_KEYS.FILES);
+                if (filesData) {
+                    state.files = JSON.parse(filesData);
+                }
 
-🎯 REAL QUESTION:
-=================
+                // Load settings
+                const settingsData = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+                if (settingsData) {
+                    state.settings = JSON.parse(settingsData);
+                }
+            } catch (error) {
+                console.log('Initializing fresh storage');
+            }
+            render();
+        }
 
-Is your portal showing ANYTHING on screen?
+        // Save data to storage
+        async function saveToStorage(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+                return true;
+            } catch (error) {
+                console.error('Storage error:', error);
+                alert('Error saving data. Please try again.');
+                return false;
+            }
+        }
 
-A) Completely blank white page
-   → localStorage might be blocked
-   → Upload test.html to check
+        // Authentication
+        function loginAsAdmin(password) {
+            if (password === state.adminPassword) {
+                state.mode = 'admin';
+                state.currentUser = { type: 'admin', name: 'Tyler Davis' };
+                render();
+            } else {
+                alert('Incorrect password');
+            }
+        }
 
-B) Shows login screen
-   → Portal IS working!
-   → 404 is just favicon
-   → Ignore it
+        function loginAsCustomer(accessCode) {
+            const customer = state.customers.find(c => c.accessCode === accessCode);
+            if (customer) {
+                state.mode = 'customer';
+                state.currentUser = { type: 'customer', data: customer };
+                render();
+            } else {
+                alert('Invalid access code');
+            }
+        }
 
-C) Shows error message
-   → Tell me what it says
-   → We'll fix it
+        function logout() {
+            state.mode = 'login';
+            state.currentUser = null;
+            state.view = 'dashboard';
+            render();
+        }
 
-D) Loads forever (spinning)
-   → JavaScript error
-   → Press F12, check Console
-   → Send screenshot
+        // Customer Management
+        async function addCustomer(customerData) {
+            // Generate invoice number based on year and customer count
+            const year = new Date().getFullYear().toString().slice(-2); // Get last 2 digits of year
+            const customerNumber = (state.customers.length + 1).toString().padStart(3, '0'); // Pad to 3 digits
+            const invoiceNumber = `IN-${year}-${customerNumber}`;
+            
+            const newCustomer = {
+                id: Date.now().toString(),
+                accessCode: invoiceNumber, // Use invoice number as access code/password
+                invoiceNumber: invoiceNumber, // Store separately for display
+                createdAt: new Date().toISOString(),
+                monitoringCompany: null, // Will store monitoring company info
+                internalNotes: '', // Admin-only notes including pricing
+                ...customerData
+            };
+            state.customers.push(newCustomer);
+            await saveToStorage(STORAGE_KEYS.CUSTOMERS, state.customers);
+            render();
+            
+            return invoiceNumber;
+        }
 
-📸 WHAT I NEED FROM YOU:
-=========================
+        async function updateCustomer(id, updates) {
+            const index = state.customers.findIndex(c => c.id === id);
+            if (index !== -1) {
+                state.customers[index] = { ...state.customers[index], ...updates };
+                await saveToStorage(STORAGE_KEYS.CUSTOMERS, state.customers);
+                render();
+            }
+        }
 
-Please send me:
-1. Screenshot of your Netlify URL (the blank page)
-2. Screenshot of F12 Console (with any red errors)
-3. Screenshot after uploading test.html
+        async function deleteCustomer(id) {
+            if (confirm('Are you sure you want to delete this customer?')) {
+                state.customers = state.customers.filter(c => c.id !== id);
+                await saveToStorage(STORAGE_KEYS.CUSTOMERS, state.customers);
+                render();
+            }
+        }
 
-This will tell me exactly what's wrong!
+        function editCustomer(id) {
+            const customer = state.customers.find(c => c.id === id);
+            if (!customer) return;
 
-💡 QUICK FIX TO TRY RIGHT NOW:
-==============================
+            const formArea = document.getElementById('customerFormArea');
+            formArea.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Edit Customer</h3>
+                    
+                    <form id="editCustomerForm" onsubmit="event.preventDefault(); submitEditCustomerForm('${id}', this);" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-900 mb-2">Company Name</label>
+                                <input type="text" name="companyName" value="${customer.companyName || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-900 mb-2">Contact Name</label>
+                                <input type="text" name="contactName" value="${customer.contactName || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-900 mb-2">Email</label>
+                                <input type="email" name="email" value="${customer.email || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-900 mb-2">Phone</label>
+                                <input type="tel" name="phone" value="${customer.phone || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-900 mb-2">Address</label>
+                            <input type="text" name="address" value="${customer.address || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                        </div>
 
-1. Open your Netlify portal URL
-2. Press Ctrl + Shift + Delete
-3. Check "Cached images and files"
-4. Click "Clear data"
-5. Reload portal (Ctrl + Shift + R)
+                        ${customer.monitoringCompany ? `
+                            <div class="bg-blue-900/30 border-2 border-blue-500 rounded-lg p-4">
+                                <h4 class="font-bold text-blue-200 mb-3">🔔 Monitoring Company</h4>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-semibold text-gray-900 mb-2">Company Name</label>
+                                        <input type="text" name="monitoringCompanyName" value="${customer.monitoringCompany.companyName || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-900 mb-2">Phone</label>
+                                            <input type="tel" name="monitoringPhone" value="${customer.monitoringCompany.phone || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                                        </div>
+                                        <div>
+                                            <label class="block text-sm font-semibold text-gray-900 mb-2">Email</label>
+                                            <input type="email" name="monitoringEmail" value="${customer.monitoringCompany.email || ''}" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
 
-Sometimes it's just a cache issue!
+                        ${customer.internalNotes ? `
+                            <div class="bg-yellow-900/30 border-2 border-yellow-600 rounded-lg p-4">
+                                <h4 class="font-bold text-yellow-200 mb-3">📋 Admin Notes (Hidden from Customer)</h4>
+                                <textarea name="internalNotes" rows="6" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300 font-mono text-xs">${customer.internalNotes || ''}</textarea>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="flex space-x-4">
+                            <button type="submit" class="crimson-gradient px-6 py-3 rounded-lg font-semibold text-gray-900 hover:opacity-90">
+                                💾 Save Changes
+                            </button>
+                            <button type="button" onclick="document.getElementById('customerFormArea').innerHTML = ''; render();" class="bg-white px-6 py-3 rounded-lg text-gray-900 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
 
-🆘 IF NOTHING WORKS:
-====================
+            // Scroll to form
+            formArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
-Forget hosting. Just use HubSpot:
-1. Go to hubspot.com
-2. Sign up free
-3. Add customers
-4. Share portal
-5. Done in 10 minutes
-6. No technical issues
+        async function submitEditCustomerForm(id, form) {
+            const formData = new FormData(form);
+            
+            const updates = {
+                companyName: formData.get('companyName'),
+                contactName: formData.get('contactName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                address: formData.get('address')
+            };
 
-They have a working customer portal that your employees can use TODAY without any hosting headaches!
+            // Update monitoring company if it exists
+            const customer = state.customers.find(c => c.id === id);
+            if (customer && customer.monitoringCompany) {
+                updates.monitoringCompany = {
+                    companyName: formData.get('monitoringCompanyName'),
+                    phone: formData.get('monitoringPhone'),
+                    email: formData.get('monitoringEmail')
+                };
+            }
+
+            // Update internal notes if they exist
+            if (formData.has('internalNotes')) {
+                updates.internalNotes = formData.get('internalNotes');
+            }
+
+            await updateCustomer(id, updates);
+            document.getElementById('customerFormArea').innerHTML = '';
+        }
+
+        // Jobsite Management
+        async function addJobsite(jobsiteData) {
+            const newJobsite = {
+                id: Date.now().toString(),
+                createdAt: new Date().toISOString(),
+                ...jobsiteData
+            };
+            state.jobsites.push(newJobsite);
+            await saveToStorage(STORAGE_KEYS.JOBSITES, state.jobsites);
+            render();
+        }
+
+        async function updateJobsite(id, updates) {
+            const index = state.jobsites.findIndex(j => j.id === id);
+            if (index !== -1) {
+                state.jobsites[index] = { ...state.jobsites[index], ...updates };
+                await saveToStorage(STORAGE_KEYS.JOBSITES, state.jobsites);
+                render();
+            }
+        }
+
+        async function deleteJobsite(id) {
+            if (confirm('Are you sure you want to delete this jobsite?')) {
+                state.jobsites = state.jobsites.filter(j => j.id !== id);
+                await saveToStorage(STORAGE_KEYS.JOBSITES, state.jobsites);
+                render();
+            }
+        }
+
+        // Work Log Management
+        async function addWorkLog(workLogData) {
+            const newLog = {
+                id: Date.now().toString(),
+                createdAt: new Date().toISOString(),
+                ...workLogData
+            };
+            state.workLogs.push(newLog);
+            await saveToStorage(STORAGE_KEYS.WORK_LOGS, state.workLogs);
+            render();
+        }
+
+        async function deleteWorkLog(id) {
+            if (confirm('Are you sure you want to delete this work log?')) {
+                state.workLogs = state.workLogs.filter(w => w.id !== id);
+                await saveToStorage(STORAGE_KEYS.WORK_LOGS, state.workLogs);
+                render();
+            }
+        }
+
+        // File Management
+        async function addFile(fileData) {
+            const newFile = {
+                id: Date.now().toString(),
+                uploadedAt: new Date().toISOString(),
+                requiresSignature: false,
+                signatureStatus: 'none', // 'none', 'pending', 'signed'
+                signedVersion: null,
+                signedAt: null,
+                ...fileData
+            };
+            state.files.push(newFile);
+            await saveToStorage(STORAGE_KEYS.FILES, state.files);
+            render();
+        }
+
+        async function deleteFile(id) {
+            const file = state.files.find(f => f.id === id);
+            if (!file) return;
+            
+            const customerName = getCustomerName(file.customerId);
+            const confirmMessage = `⚠️ DELETE FILE
+            
+File: ${file.fileName}
+Customer: ${customerName}
+Type: ${file.fileType || 'Document'}
+${file.signatureStatus === 'signed' ? '\n⚠️ WARNING: This file has been signed by the customer!' : ''}
+
+Are you sure you want to permanently delete this file?
+
+This action CANNOT be undone.`;
+
+            if (confirm(confirmMessage)) {
+                state.files = state.files.filter(f => f.id !== id);
+                await saveToStorage(STORAGE_KEYS.FILES, state.files);
+                render();
+                
+                // Success notification
+                setTimeout(() => {
+                    alert('✓ File deleted successfully');
+                }, 100);
+            }
+        }
+
+        // Utility Functions
+        function generateAccessCode() {
+            return 'PFS-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+        }
+
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+
+        function getCustomerName(customerId) {
+            const customer = state.customers.find(c => c.id === customerId);
+            return customer ? customer.companyName || customer.contactName : 'Unknown';
+        }
+
+        function getJobsiteName(jobsiteId) {
+            const jobsite = state.jobsites.find(j => j.id === jobsiteId);
+            return jobsite ? jobsite.name : 'Unknown';
+        }
+
+        // Render Functions
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (state.mode === 'login') {
+                app.innerHTML = renderLoginPage();
+            } else if (state.mode === 'admin') {
+                app.innerHTML = renderAdminDashboard();
+            } else if (state.mode === 'customer') {
+                app.innerHTML = renderCustomerPortal();
+            }
+        }
+
+        function renderLoginPage() {
+            return `
+                <div class="min-h-screen flex items-center justify-center">
+                    <div class="login-card glassmorphism card-shadow rounded-2xl p-8 max-w-md w-full">
+                        <!-- Logo/Header -->
+                        <div class="text-center mb-8">
+                            <h1 class="text-4xl font-bold text-gray-900 mb-2">Platinum Fire Services</h1>
+                            <p class="text-gray-600">Portal Login</p>
+                        </div>
+
+                        <!-- Admin Login -->
+                        <div class="mb-8">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4">Admin Access</h3>
+                            <form onsubmit="event.preventDefault(); loginAsAdmin(this.password.value);" class="space-y-4">
+                                <input 
+                                    type="password" 
+                                    name="password" 
+                                    placeholder="Admin Password" 
+                                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-600"
+                                    required
+                                >
+                                <button type="submit" class="w-full crimson-gradient text-white font-semibold py-3 rounded-lg hover:opacity-90 transition">
+                                    Login as Admin
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="border-t border-gray-200 my-6"></div>
+
+                        <!-- Customer Login -->
+                        <div>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4">Customer Access</h3>
+                            <form onsubmit="event.preventDefault(); loginAsCustomer(this.accessCode.value);" class="space-y-4">
+                                <input 
+                                    type="text" 
+                                    name="accessCode" 
+                                    placeholder="Invoice Number (e.g., IN-26-001)" 
+                                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-red-600"
+                                    required
+                                >
+                                <button type="submit" class="w-full bg-gray-900 text-gray-900 font-semibold py-3 rounded-lg hover:bg-gray-800 transition">
+                                    Login as Customer
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminDashboard() {
+            return `
+                <div class="min-h-screen">
+                    <!-- Header -->
+                    <div class="glassmorphism card-shadow rounded-2xl p-6 mb-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-900">Platinum Fire Services</h1>
+                                <p class="text-gray-600">Admin Dashboard</p>
+                            </div>
+                            <button onclick="logout()" class="bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-2 rounded-lg transition font-semibold">
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="glassmorphism card-shadow rounded-2xl p-4 mb-6">
+                        <div class="flex space-x-2 overflow-x-auto">
+                            ${['dashboard', 'customers', 'jobsites', 'work', 'files', 'proposals'].map(view => `
+                                <button 
+                                    onclick="state.view = '${view}'; render();"
+                                    class="px-6 py-3 rounded-lg font-semibold whitespace-nowrap transition ${
+                                        state.view === view 
+                                        ? 'crimson-gradient text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }"
+                                >
+                                    ${view.charAt(0).toUpperCase() + view.slice(1)}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="glassmorphism card-shadow rounded-2xl p-6">
+                        ${renderAdminContent()}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminContent() {
+            switch (state.view) {
+                case 'dashboard':
+                    return renderDashboardView();
+                case 'customers':
+                    return renderCustomersView();
+                case 'jobsites':
+                    return renderJobsitesView();
+                case 'work':
+                    return renderWorkLogsView();
+                case 'files':
+                    return renderFilesView();
+                case 'proposals':
+                    return renderProposalsView();
+                default:
+                    return renderDashboardView();
+            }
+        }
+
+        function renderDashboardView() {
+            return `
+                <div class="text-gray-900">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Dashboard Overview</h2>
+                        <div class="flex space-x-3">
+                            <button onclick="exportAllData()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition text-sm">
+                                📥 Export Data
+                            </button>
+                            <button onclick="showImportModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition text-sm">
+                                📤 Import Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-white rounded-lg p-6">
+                            <div class="text-4xl font-bold mb-2">${state.customers.length}</div>
+                            <div class="text-gray-600">Total Customers</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-6">
+                            <div class="text-4xl font-bold mb-2">${state.jobsites.length}</div>
+                            <div class="text-gray-600">Active Jobsites</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-6">
+                            <div class="text-4xl font-bold mb-2">${state.workLogs.length}</div>
+                            <div class="text-gray-600">Work Logs</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-6">
+                            <div class="text-4xl font-bold mb-2">${state.files.length}</div>
+                            <div class="text-gray-600">Files Stored</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg p-6">
+                        <h3 class="text-xl font-semibold mb-4">Recent Activity</h3>
+                        ${state.workLogs.length === 0 ? `
+                            <p class="text-gray-300">No recent activity</p>
+                        ` : `
+                            <div class="space-y-3">
+                                ${state.workLogs.slice(-5).reverse().map(log => `
+                                    <div class="bg-white/5 rounded-lg p-4">
+                                        <div class="font-semibold">${log.serviceType}</div>
+                                        <div class="text-sm text-gray-300">${getCustomerName(log.customerId)} - ${getJobsiteName(log.jobsiteId)}</div>
+                                        <div class="text-xs text-gray-400 mt-1">${formatDate(log.createdAt)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCustomersView() {
+            return `
+                <div class="text-gray-900">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Customers</h2>
+                        <button onclick="showAddCustomerForm()" class="crimson-gradient px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                            + Add Customer
+                        </button>
+                    </div>
+
+                    <div id="customerFormArea"></div>
+
+                    ${state.customers.length === 0 ? `
+                        <div class="text-center py-12 text-gray-300">
+                            <p class="text-xl">No customers yet</p>
+                            <p class="text-sm mt-2">Click "Add Customer" to get started</p>
+                        </div>
+                    ` : `
+                        <div class="space-y-4">
+                            ${state.customers.map(customer => `
+                                <div class="bg-white rounded-lg p-6">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h3 class="text-xl font-bold mb-2">${customer.companyName || 'N/A'}</h3>
+                                            <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                                                <div>
+                                                    <span class="text-gray-300">Contact:</span> ${customer.contactName}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Email:</span> ${customer.email}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Phone:</span> ${customer.phone}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Invoice #/Password:</span> 
+                                                    <span class="bg-red-900 px-2 py-1 rounded font-mono">${customer.accessCode}</span>
+                                                </div>
+                                            </div>
+                                            ${customer.address ? `
+                                                <div class="mb-3 text-sm text-gray-300">
+                                                    <span class="text-gray-300">Address:</span> ${customer.address}
+                                                </div>
+                                            ` : ''}
+                                            
+                                            ${customer.monitoringCompany ? `
+                                                <div class="bg-blue-900/30 border border-blue-500 rounded-lg p-3 mb-3">
+                                                    <div class="font-bold text-blue-200 mb-2 flex items-center">
+                                                        🔔 Monitoring Company
+                                                    </div>
+                                                    <div class="text-sm space-y-1">
+                                                        ${customer.monitoringCompany.companyName ? `<div><span class="text-gray-300">Company:</span> ${customer.monitoringCompany.companyName}</div>` : ''}
+                                                        ${customer.monitoringCompany.phone ? `<div><span class="text-gray-300">Phone:</span> ${customer.monitoringCompany.phone}</div>` : ''}
+                                                        ${customer.monitoringCompany.email ? `<div><span class="text-gray-300">Email:</span> ${customer.monitoringCompany.email}</div>` : ''}
+                                                    </div>
+                                                </div>
+                                            ` : ''}
+                                            
+                                            ${customer.internalNotes ? `
+                                                <div class="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
+                                                    <div class="font-bold text-yellow-200 mb-2 flex items-center">
+                                                        📋 Admin Notes (Hidden from Customer)
+                                                    </div>
+                                                    <div class="text-xs text-gray-300 whitespace-pre-wrap font-mono">${customer.internalNotes}</div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <div class="flex flex-col space-y-2 ml-4">
+                                            <button onclick="editCustomer('${customer.id}')" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm whitespace-nowrap">
+                                                ✏️ Edit
+                                            </button>
+                                            <button onclick="deleteCustomer('${customer.id}')" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderJobsitesView() {
+            return `
+                <div class="text-gray-900">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Jobsites</h2>
+                        <button onclick="showAddJobsiteForm()" class="crimson-gradient px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                            + Add Jobsite
+                        </button>
+                    </div>
+
+                    <div id="jobsiteFormArea"></div>
+
+                    ${state.jobsites.length === 0 ? `
+                        <div class="text-center py-12 text-gray-300">
+                            <p class="text-xl">No jobsites yet</p>
+                            <p class="text-sm mt-2">Click "Add Jobsite" to get started</p>
+                        </div>
+                    ` : `
+                        <div class="space-y-4">
+                            ${state.jobsites.map(jobsite => `
+                                <div class="bg-white rounded-lg p-6">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <h3 class="text-xl font-bold mb-2">${jobsite.name}</h3>
+                                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                                <div>
+                                                    <span class="text-gray-300">Customer:</span> ${getCustomerName(jobsite.customerId)}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Address:</span> ${jobsite.address}
+                                                </div>
+                                                ${jobsite.contactPerson ? `
+                                                    <div>
+                                                        <span class="text-gray-300">Contact:</span> ${jobsite.contactPerson}
+                                                    </div>
+                                                ` : ''}
+                                                ${jobsite.contactPhone ? `
+                                                    <div>
+                                                        <span class="text-gray-300">Phone:</span> ${jobsite.contactPhone}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                            ${jobsite.notes ? `
+                                                <div class="mt-3 text-sm text-gray-300">
+                                                    <span class="text-gray-300">Notes:</span> ${jobsite.notes}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <button onclick="deleteJobsite('${jobsite.id}')" class="ml-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderWorkLogsView() {
+            return `
+                <div class="text-gray-900">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Work Logs</h2>
+                        <button onclick="showAddWorkLogForm()" class="crimson-gradient px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                            + Add Work Log
+                        </button>
+                    </div>
+
+                    <div id="workLogFormArea"></div>
+
+                    ${state.workLogs.length === 0 ? `
+                        <div class="text-center py-12 text-gray-300">
+                            <p class="text-xl">No work logs yet</p>
+                            <p class="text-sm mt-2">Click "Add Work Log" to document your work</p>
+                        </div>
+                    ` : `
+                        <div class="space-y-4">
+                            ${state.workLogs.slice().reverse().map(log => `
+                                <div class="bg-white rounded-lg p-6">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-4 mb-3">
+                                                <h3 class="text-xl font-bold">${log.serviceType}</h3>
+                                                <span class="bg-green-600 px-3 py-1 rounded-full text-xs">${log.status || 'Completed'}</span>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                                                <div>
+                                                    <span class="text-gray-300">Customer:</span> ${getCustomerName(log.customerId)}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Jobsite:</span> ${getJobsiteName(log.jobsiteId)}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Date:</span> ${new Date(log.serviceDate).toLocaleDateString()}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Technician:</span> ${log.technician}
+                                                </div>
+                                            </div>
+                                            ${log.description ? `
+                                                <div class="bg-white/5 rounded p-3 text-sm">
+                                                    <div class="text-gray-300 font-semibold mb-1">Work Performed:</div>
+                                                    <div>${log.description}</div>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <button onclick="deleteWorkLog('${log.id}')" class="ml-4 bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm">
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderFilesView() {
+            return `
+                <div class="text-gray-900">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">Files</h2>
+                        <button onclick="showAddFileForm()" class="crimson-gradient px-6 py-3 rounded-lg font-semibold hover:opacity-90">
+                            + Upload File
+                        </button>
+                    </div>
+
+                    <div id="fileFormArea"></div>
+
+                    ${state.files.length === 0 ? `
+                        <div class="text-center py-12 text-gray-300">
+                            <p class="text-xl">No files uploaded yet</p>
+                            <p class="text-sm mt-2">Click "Upload File" to add documents</p>
+                        </div>
+                    ` : `
+                        <div class="space-y-4">
+                            ${state.files.slice().reverse().map(file => `
+                                <div class="bg-white rounded-lg p-6 file-item">
+                                    <div class="flex justify-between items-start">
+                                        <div class="flex-1">
+                                            <div class="flex items-center space-x-3 mb-2">
+                                                <h3 class="text-xl font-bold">📄 ${file.fileName}</h3>
+                                                ${file.requiresSignature ? `
+                                                    <span class="px-3 py-1 rounded-full text-xs font-semibold ${
+                                                        file.signatureStatus === 'signed' 
+                                                            ? 'bg-green-600 text-gray-900' 
+                                                            : 'bg-yellow-600 text-gray-900'
+                                                    }">
+                                                        ${file.signatureStatus === 'signed' ? '✓ Signed' : '⏳ Awaiting Signature'}
+                                                    </span>
+                                                ` : ''}
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                                <div>
+                                                    <span class="text-gray-300">Customer:</span> ${getCustomerName(file.customerId)}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Type:</span> ${file.fileType || 'Document'}
+                                                </div>
+                                                <div>
+                                                    <span class="text-gray-300">Uploaded:</span> ${formatDate(file.uploadedAt)}
+                                                </div>
+                                                ${file.jobsiteId ? `
+                                                    <div>
+                                                        <span class="text-gray-300">Jobsite:</span> ${getJobsiteName(file.jobsiteId)}
+                                                    </div>
+                                                ` : ''}
+                                                ${file.signedAt ? `
+                                                    <div>
+                                                        <span class="text-gray-300">Signed:</span> ${formatDate(file.signedAt)}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                            ${file.description ? `
+                                                <div class="mt-3 text-sm text-gray-300">
+                                                    ${file.description}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                        <div class="flex space-x-2 ml-4">
+                                            ${file.signatureStatus === 'signed' && file.signedVersion ? `
+                                                <button onclick="viewFile('${file.id}', true)" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm">
+                                                    View Signed
+                                                </button>
+                                            ` : ''}
+                                            <button onclick="viewFile('${file.id}')" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded text-sm">
+                                                View Original
+                                            </button>
+                                            <button onclick="downloadFile('${file.id}')" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded text-sm">
+                                                Download
+                                            </button>
+                                            <button onclick="deleteFile('${file.id}')" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-sm">
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderProposalsView() {
+            const pendingProposals = state.files.filter(f => f.requiresSignature && f.signatureStatus === 'pending');
+            const approvedProposals = state.files.filter(f => f.requiresSignature && f.signatureStatus === 'signed');
+            
+            const [activeTab, setActiveTab] = [state.proposalTab || 'pending', (tab) => { state.proposalTab = tab; render(); }];
+            
+            return `
+                <div class="text-gray-900">
+                    <h2 class="text-2xl font-bold mb-6">Proposals Management</h2>
+                    
+                    <!-- Proposal Stats -->
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-4xl font-bold text-yellow-900 mb-2">${pendingProposals.length}</div>
+                                    <div class="text-yellow-800 font-semibold">Pending Signatures</div>
+                                </div>
+                                <div class="text-yellow-500 text-5xl">⏳</div>
+                            </div>
+                        </div>
+                        <div class="bg-green-50 border-l-4 border-green-500 rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-4xl font-bold text-green-900 mb-2">${approvedProposals.length}</div>
+                                    <div class="text-green-800 font-semibold">Approved Proposals</div>
+                                </div>
+                                <div class="text-green-500 text-5xl">✓</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="flex space-x-2 mb-6">
+                        <button 
+                            onclick="state.proposalTab = 'pending'; render();"
+                            class="px-6 py-3 rounded-lg font-semibold transition ${
+                                (state.proposalTab || 'pending') === 'pending'
+                                ? 'bg-yellow-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }"
+                        >
+                            ⏳ Pending (${pendingProposals.length})
+                        </button>
+                        <button 
+                            onclick="state.proposalTab = 'approved'; render();"
+                            class="px-6 py-3 rounded-lg font-semibold transition ${
+                                state.proposalTab === 'approved'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }"
+                        >
+                            ✓ Approved (${approvedProposals.length})
+                        </button>
+                    </div>
+
+                    <!-- Proposals List -->
+                    <div class="space-y-4">
+                        ${(state.proposalTab || 'pending') === 'pending' ? `
+                            ${pendingProposals.length === 0 ? `
+                                <div class="text-center py-12 text-gray-400">
+                                    <div class="text-6xl mb-4">📄</div>
+                                    <p class="text-xl">No pending proposals</p>
+                                    <p class="text-sm mt-2">Upload files with "Requires Signature" to see them here</p>
+                                </div>
+                            ` : pendingProposals.map(file => {
+                                const customer = state.customers.find(c => c.id === file.customerId);
+                                const jobsite = state.jobsites.find(j => j.id === file.jobsiteId);
+                                return `
+                                    <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-6">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-3 mb-3">
+                                                    <span class="bg-yellow-200 text-yellow-900 px-3 py-1 rounded-full text-xs font-bold">
+                                                        ⏳ AWAITING SIGNATURE
+                                                    </span>
+                                                    <h3 class="text-xl font-bold text-gray-900">${file.fileName}</h3>
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                                                    <div>
+                                                        <span class="text-gray-600">Customer:</span>
+                                                        <span class="font-semibold text-gray-900"> ${customer ? customer.companyName : 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-600">Jobsite:</span>
+                                                        <span class="font-semibold text-gray-900"> ${jobsite ? jobsite.name : 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-600">Type:</span>
+                                                        <span class="font-semibold text-gray-900"> ${file.fileType || 'Document'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-600">Uploaded:</span>
+                                                        <span class="font-semibold text-gray-900"> ${formatDate(file.uploadedAt)}</span>
+                                                    </div>
+                                                </div>
+                                                ${file.description ? `
+                                                    <div class="text-sm text-gray-600 mb-3">
+                                                        <span class="font-semibold">Description:</span> ${file.description}
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                            <div class="flex flex-col space-y-2 ml-4">
+                                                <button onclick="viewFile('${file.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm whitespace-nowrap">
+                                                    👁️ View
+                                                </button>
+                                                <button onclick="downloadFile('${file.id}')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                                                    ⬇️ Download
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        ` : `
+                            ${approvedProposals.length === 0 ? `
+                                <div class="text-center py-12 text-gray-400">
+                                    <div class="text-6xl mb-4">✓</div>
+                                    <p class="text-xl">No approved proposals yet</p>
+                                    <p class="text-sm mt-2">Signed proposals will appear here</p>
+                                </div>
+                            ` : approvedProposals.map(file => {
+                                const customer = state.customers.find(c => c.id === file.customerId);
+                                const jobsite = state.jobsites.find(j => j.id === file.jobsiteId);
+                                return `
+                                    <div class="bg-green-50 border-l-4 border-green-500 rounded-lg p-6">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-3 mb-3">
+                                                    <span class="bg-green-200 text-green-900 px-3 py-1 rounded-full text-xs font-bold">
+                                                        ✓ SIGNED
+                                                    </span>
+                                                    <h3 class="text-xl font-bold text-gray-900">${file.fileName}</h3>
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                                                    <div>
+                                                        <span class="text-gray-600">Customer:</span>
+                                                        <span class="font-semibold text-gray-900"> ${customer ? customer.companyName : 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-600">Jobsite:</span>
+                                                        <span class="font-semibold text-gray-900"> ${jobsite ? jobsite.name : 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-600">Signed By:</span>
+                                                        <span class="font-semibold text-gray-900"> ${file.signerName || 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="text-gray-600">Signed On:</span>
+                                                        <span class="font-semibold text-gray-900"> ${formatDate(file.signedAt)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-col space-y-2 ml-4">
+                                                <button onclick="viewFile('${file.id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm whitespace-nowrap">
+                                                    👁️ View Original
+                                                </button>
+                                                <button onclick="viewSignedFile('${file.id}')" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded text-sm">
+                                                    📝 View Signed
+                                                </button>
+                                                <button onclick="downloadFile('${file.id}')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm">
+                                                    ⬇️ Download
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCustomerPortal() {
+            const customer = state.currentUser.data;
+            const customerFiles = state.files.filter(f => f.customerId === customer.id);
+            const customerJobsites = state.jobsites.filter(j => j.customerId === customer.id);
+            const customerWorkLogs = state.workLogs.filter(w => w.customerId === customer.id);
+
+            return `
+                <div class="min-h-screen">
+                    <!-- Header -->
+                    <div class="glassmorphism card-shadow rounded-2xl p-6 mb-6">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-900">${customer.companyName || customer.contactName}</h1>
+                                <p class="text-gray-600">Customer Portal</p>
+                            </div>
+                            <button onclick="logout()" class="bg-gray-50 hover:bg-gray-200 text-gray-900 px-6 py-2 rounded-lg transition">
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="glassmorphism card-shadow rounded-2xl p-6 text-gray-900">
+                            <div class="text-4xl font-bold mb-2">${customerFiles.length}</div>
+                            <div class="text-gray-600">Your Files</div>
+                        </div>
+                        <div class="glassmorphism card-shadow rounded-2xl p-6 text-gray-900">
+                            <div class="text-4xl font-bold mb-2">${customerJobsites.length}</div>
+                            <div class="text-gray-600">Your Locations</div>
+                        </div>
+                        <div class="glassmorphism card-shadow rounded-2xl p-6 text-gray-900">
+                            <div class="text-4xl font-bold mb-2">${customerWorkLogs.length}</div>
+                            <div class="text-gray-600">Service Records</div>
+                        </div>
+                    </div>
+
+                    <!-- Files Section -->
+                    <div class="glassmorphism card-shadow rounded-2xl p-6 mb-6">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6">Your Documents</h2>
+                        ${customerFiles.length === 0 ? `
+                            <div class="text-center py-12 text-gray-300">
+                                <p class="text-xl">No documents available yet</p>
+                                <p class="text-sm mt-2">Your service provider will upload documents here</p>
+                            </div>
+                        ` : `
+                            <div class="space-y-4">
+                                ${customerFiles.slice().reverse().map(file => `
+                                    <div class="bg-white rounded-lg p-6 text-gray-900 file-item">
+                                        <div class="flex justify-between items-start">
+                                            <div class="flex-1">
+                                                <div class="flex items-center space-x-3 mb-2">
+                                                    <h3 class="text-xl font-bold">📄 ${file.fileName}</h3>
+                                                    ${file.requiresSignature ? `
+                                                        <span class="px-3 py-1 rounded-full text-xs font-semibold ${
+                                                            file.signatureStatus === 'signed' 
+                                                                ? 'bg-green-600 text-gray-900' 
+                                                                : 'bg-yellow-600 text-gray-900 animate-pulse'
+                                                        }">
+                                                            ${file.signatureStatus === 'signed' ? '✓ Signed' : '⚠️ Signature Required'}
+                                                        </span>
+                                                    ` : ''}
+                                                </div>
+                                                <div class="text-sm space-y-1">
+                                                    <div><span class="text-gray-300">Type:</span> ${file.fileType || 'Document'}</div>
+                                                    <div><span class="text-gray-300">Uploaded:</span> ${formatDate(file.uploadedAt)}</div>
+                                                    ${file.signedAt ? `<div><span class="text-gray-300">You signed on:</span> ${formatDate(file.signedAt)}</div>` : ''}
+                                                    ${file.description ? `<div class="mt-2 text-gray-300">${file.description}</div>` : ''}
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-col space-y-2 ml-4">
+                                                ${file.requiresSignature && file.signatureStatus !== 'signed' ? `
+                                                    <div class="bg-yellow-50 border-l-4 border-yellow-600 p-4 rounded mb-2">
+                                                        <p class="text-yellow-900 font-bold text-sm mb-2">📋 Action Required</p>
+                                                        <p class="text-yellow-800 text-xs mb-3">Please download, sign, and upload the completed contract:</p>
+                                                        <ol class="text-yellow-800 text-xs list-decimal list-inside space-y-1 mb-3">
+                                                            <li>Click "Download PDF" below</li>
+                                                            <li>Print and sign the document</li>
+                                                            <li>Scan or take a clear photo (save as PDF)</li>
+                                                            <li>Upload signed PDF using "Upload Signed" button</li>
+                                                        </ol>
+                                                    </div>
+                                                    <button onclick="downloadOriginalPDF('${file.id}')" class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold text-white">
+                                                        ⬇️ Download PDF
+                                                    </button>
+                                                    <button onclick="showUploadSignedModal('${file.id}')" class="bg-yellow-600 hover:bg-yellow-700 px-6 py-3 rounded-lg font-semibold text-white animate-pulse">
+                                                        📤 Upload Signed PDF
+                                                    </button>
+                                                ` : ''}
+                                                ${file.signatureStatus === 'signed' && file.signedVersion ? `
+                                                    <button onclick="downloadSignedPDF('${file.fileName}', '${file.signedVersion}')" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold text-white">
+                                                        📝 Download Signed PDF
+                                                    </button>
+                                                ` : ''}
+                                                <button onclick="viewFile('${file.id}')" class="crimson-gradient px-4 py-2 rounded-lg font-semibold hover:opacity-90 text-white">
+                                                    👁️ View Original
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+
+                    <!-- Service History -->
+                    <div class="glassmorphism card-shadow rounded-2xl p-6">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6">Service History</h2>
+                        ${customerWorkLogs.length === 0 ? `
+                            <div class="text-center py-12 text-gray-300">
+                                <p class="text-xl">No service records yet</p>
+                            </div>
+                        ` : `
+                            <div class="space-y-4">
+                                ${customerWorkLogs.slice().reverse().map(log => `
+                                    <div class="bg-white rounded-lg p-6 text-gray-900">
+                                        <div class="flex items-center space-x-4 mb-3">
+                                            <h3 class="text-xl font-bold">${log.serviceType}</h3>
+                                            <span class="bg-green-600 px-3 py-1 rounded-full text-xs">${log.status || 'Completed'}</span>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-4 text-sm mb-3">
+                                            <div><span class="text-gray-300">Date:</span> ${new Date(log.serviceDate).toLocaleDateString()}</div>
+                                            <div><span class="text-gray-300">Technician:</span> ${log.technician}</div>
+                                            ${log.jobsiteId ? `<div><span class="text-gray-300">Location:</span> ${getJobsiteName(log.jobsiteId)}</div>` : ''}
+                                        </div>
+                                        ${log.description ? `
+                                            <div class="bg-white/5 rounded p-3 text-sm">
+                                                <div class="text-gray-300 font-semibold mb-1">Work Performed:</div>
+                                                <div>${log.description}</div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Form Functions
+        function showAddCustomerForm() {
+            const formArea = document.getElementById('customerFormArea');
+            formArea.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Add New Customer</h3>
+                    
+                    <!-- Upload Word Doc for Auto-Fill -->
+                    <div class="mb-6 bg-blue-900/30 border-2 border-blue-500 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 class="font-bold text-gray-900 mb-1">📄 Smart Import from Word Doc</h4>
+                                <p class="text-sm text-gray-300">Upload a .docx file with customer contact info to auto-extract and fill fields</p>
+                            </div>
+                            <label class="bg-blue-600 hover:bg-blue-700 text-gray-900 px-6 py-3 rounded-lg font-semibold cursor-pointer transition">
+                                Upload .docx
+                                <input type="file" accept=".docx" onchange="handleCustomerDocUpload(this)" class="hidden">
+                            </label>
+                        </div>
+                        
+                        <!-- Document Preview Area -->
+                        <div id="docPreviewArea" class="hidden">
+                            <div class="bg-white rounded-lg p-4 mb-4">
+                                <div class="flex justify-between items-start mb-3">
+                                    <div>
+                                        <h5 class="font-bold text-gray-900 mb-1">📄 <span id="docFileName"></span></h5>
+                                        <p class="text-xs text-gray-400">Document Preview</p>
+                                    </div>
+                                    <button onclick="downloadExtractedInfo()" class="bg-green-600 hover:bg-green-700 text-gray-900 px-4 py-2 rounded text-sm font-semibold">
+                                        ⬇️ Download Info
+                                    </button>
+                                </div>
+                                <div id="docContent" class="bg-black/20 rounded p-3 text-sm text-gray-300 max-h-40 overflow-y-auto font-mono whitespace-pre-wrap"></div>
+                            </div>
+                            
+                            <!-- Extracted Information Display -->
+                            <div id="extractedInfo" class="bg-green-900/30 border border-green-500 rounded-lg p-4">
+                                <h5 class="font-bold text-gray-900 mb-2">✓ Extracted Information:</h5>
+                                <div id="extractedFields" class="text-sm text-gray-600 space-y-1"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="customerForm" onsubmit="event.preventDefault(); submitCustomerForm(this);" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" name="companyName" id="customerCompanyName" placeholder="Company Name" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            <input type="text" name="contactName" id="customerContactName" placeholder="Contact Name" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            <input type="email" name="email" id="customerEmail" placeholder="Email" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            <input type="tel" name="phone" id="customerPhone" placeholder="Phone" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                        </div>
+                        <input type="text" name="address" id="customerAddress" placeholder="Address (optional)" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                        <div class="flex space-x-4">
+                            <button type="submit" class="crimson-gradient px-6 py-3 rounded-lg font-semibold text-gray-900 hover:opacity-90">
+                                Save Customer
+                            </button>
+                            <button type="button" onclick="document.getElementById('customerFormArea').innerHTML = ''" class="bg-white px-6 py-3 rounded-lg text-gray-900 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        let extractedDocumentData = null; // Store for download
+
+        function handleCustomerDocUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (!file.name.endsWith('.docx')) {
+                alert('Please upload a .docx file');
+                input.value = '';
+                return;
+            }
+
+            // Show filename
+            document.getElementById('docFileName').textContent = file.name;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const arrayBuffer = e.target.result;
+                await extractCustomerContactInfo(arrayBuffer, file.name);
+            };
+            reader.onerror = function() {
+                alert('Error reading file. Please try again.');
+            };
+            reader.readAsArrayBuffer(file);
+            
+            // Clear the input so same file can be uploaded again
+            input.value = '';
+        }
+
+        async function extractCustomerContactInfo(arrayBuffer, fileName) {
+            try {
+                // Parse DOCX file
+                const zip = await JSZip.loadAsync(arrayBuffer);
+                const docXml = await zip.file('word/document.xml').async('string');
+                
+                // Extract text from XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(docXml, 'text/xml');
+                const textNodes = xmlDoc.getElementsByTagName('w:t');
+                
+                let fullText = '';
+                for (let i = 0; i < textNodes.length; i++) {
+                    fullText += textNodes[i].textContent + '\n';
+                }
+
+                // Clean up the text but preserve line breaks for better parsing
+                fullText = fullText.replace(/\n\s*\n/g, '\n').trim();
+
+                // Display document preview
+                const previewText = fullText.substring(0, 600) + (fullText.length > 600 ? '...' : '');
+                document.getElementById('docContent').textContent = previewText;
+
+                // ====== SUPER SMART EXTRACTION ======
+                const info = {
+                    emails: [],
+                    phones: [],
+                    addresses: [],
+                    prices: [],
+                    monitoringInfo: null,
+                    personNames: [],
+                    potentialCompanies: []
+                };
+
+                const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+                // ====== 1. EXTRACT ALL EMAILS WITH CONTEXT ======
+                const emailPattern = /[\w.+-]+@[\w.-]+\.\w+/gi;
+                const emailsWithContext = [];
+                
+                lines.forEach((line, index) => {
+                    const emailMatches = line.match(emailPattern);
+                    if (emailMatches) {
+                        emailMatches.forEach(email => {
+                            // Get context - check previous line for name
+                            const prevLine = index > 0 ? lines[index - 1] : '';
+                            const emailLower = email.toLowerCase();
+                            
+                            // Extract potential company from email domain
+                            const domain = email.split('@')[1].split('.')[0];
+                            
+                            emailsWithContext.push({
+                                email: emailLower,
+                                context: line,
+                                prevLine: prevLine,
+                                domain: domain
+                            });
+                        });
+                    }
+                });
+
+                info.emails = [...new Set(emailsWithContext.map(e => e.email))];
+
+                // ====== 2. EXTRACT ALL PHONE NUMBERS ======
+                const phonePattern = /(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+                const phoneMatches = fullText.match(phonePattern);
+                if (phoneMatches) {
+                    const uniquePhones = [...new Set(phoneMatches.map(p => {
+                        const digits = p.replace(/\D/g, '');
+                        return digits.length === 10 ? `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}` :
+                               digits.length === 11 ? `+1 (${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}` :
+                               p;
+                    }))];
+                    info.phones = uniquePhones;
+                }
+
+                // ====== 3. EXTRACT ALL ADDRESSES (COMPREHENSIVE) ======
+                const addressPatterns = [
+                    /(\d+\s+[A-Za-z0-9\s.]+(?:Street|St\.?|Avenue|Ave\.?|Road|Rd\.?|Drive|Dr\.?|Lane|Ln\.?|Boulevard|Blvd\.?|Way|Court|Ct\.?|Place|Pl\.?|Parkway|Pkwy\.?|Circle|Cir\.?)(?:\s*(?:#|Suite|Ste\.?|Apt\.?|Unit|Bldg\.?)\s*[\w\d-]+)?[,\s]+[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/gi,
+                    /(P\.?O\.?\s*Box\s+\d+[,\s]+[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/gi,
+                    /(\d+\s+[A-Za-z0-9\s.]+[,\s]+[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?)/gi
+                ];
+
+                addressPatterns.forEach(pattern => {
+                    const matches = fullText.match(pattern);
+                    if (matches) {
+                        matches.forEach(addr => {
+                            const cleaned = addr.trim().replace(/\s+/g, ' ');
+                            if (!info.addresses.find(a => a.toLowerCase() === cleaned.toLowerCase())) {
+                                info.addresses.push(cleaned);
+                            }
+                        });
+                    }
+                });
+
+                // ====== 4. DETECT MONITORING COMPANY INFO ======
+                const monitoringKeywords = [
+                    'monitoring', 'alarm', 'security', 'central station', 'DW security', 'DW Security',
+                    'ADT', 'Brinks', 'Vivint', 'SimpliSafe', 'Guardian', 'monitoring company',
+                    'alarm company', 'fire alarm monitoring', 'sprinkler monitoring', 'alarm service'
+                ];
+
+                const monitoringRegex = new RegExp(monitoringKeywords.join('|'), 'gi');
+                const monitoringLines = [];
+                
+                // Find all lines related to monitoring
+                lines.forEach((line, index) => {
+                    if (monitoringRegex.test(line)) {
+                        // Include surrounding context
+                        const start = Math.max(0, index - 1);
+                        const end = Math.min(lines.length, index + 4);
+                        
+                        for (let j = start; j < end; j++) {
+                            if (!monitoringLines.includes(lines[j])) {
+                                monitoringLines.push(lines[j]);
+                            }
+                        }
+                    }
+                });
+
+                if (monitoringLines.length > 0) {
+                    const sectionText = monitoringLines.join('\n');
+                    
+                    // Extract monitoring company name - more patterns
+                    let companyName = null;
+                    const companyPatterns = [
+                        /(?:monitoring|alarm|security)(?:\s*company)?:\s*([A-Za-z0-9\s&,.-]+?)(?:\n|$)/i,
+                        /(DW\s*Security)/i,
+                        /([A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*\s+(?:Security|Monitoring|Alarm|Protection))/i,
+                        /(?:company|provider|service):\s*([A-Z][A-Za-z\s&]+)/i
+                    ];
+                    
+                    for (const pattern of companyPatterns) {
+                        const match = sectionText.match(pattern);
+                        if (match) {
+                            companyName = match[1].trim();
+                            // Clean up
+                            companyName = companyName.replace(/\n.*/, '').trim();
+                            if (companyName.length > 2 && companyName.length < 100) break;
+                        }
+                    }
+
+                    // Extract monitoring-specific contact info
+                    const monitoringPhone = sectionText.match(phonePattern);
+                    const monitoringEmail = sectionText.match(emailPattern);
+
+                    info.monitoringInfo = {
+                        companyName: companyName || 'Monitoring Company',
+                        phone: monitoringPhone ? monitoringPhone[0] : null,
+                        email: monitoringEmail ? monitoringEmail[0] : null,
+                        rawText: sectionText
+                    };
+                }
+
+                // ====== 5. EXTRACT PRICING INFORMATION (ADMIN ONLY) ======
+                const pricePatterns = [
+                    /\$\s*\d+(?:,\d{3})*(?:\.\d{2})?/g,
+                    /\d+(?:,\d{3})*(?:\.\d{2})?\s*(?:dollars?|USD)/gi,
+                    /(?:price|cost|fee|total|amount|charge|rate|payment):\s*\$?\s*\d+(?:,\d{3})*(?:\.\d{2})?/gi
+                ];
+
+                const pricingInfo = [];
+                pricePatterns.forEach(pattern => {
+                    const matches = fullText.match(pattern);
+                    if (matches) {
+                        matches.forEach(price => {
+                            const priceLines = fullText.split('\n').filter(line => line.includes(price));
+                            priceLines.forEach(line => {
+                                if (!pricingInfo.includes(line.trim())) {
+                                    pricingInfo.push(line.trim());
+                                }
+                            });
+                        });
+                    }
+                });
+
+                if (pricingInfo.length > 0) {
+                    info.prices = pricingInfo;
+                }
+
+                // ====== 6. IDENTIFY PERSON NAMES (MUCH SMARTER) ======
+                // Pattern 1: Name followed by phone/email on next line(s)
+                const foundNames = [];
+                
+                for (let i = 0; i < lines.length - 1; i++) {
+                    const line = lines[i];
+                    const nextLine = lines[i + 1];
+                    const nextNextLine = i + 2 < lines.length ? lines[i + 2] : '';
+                    
+                    // Check if this line is a person name (First Last or First Middle Last)
+                    const nameMatch = line.match(/^([A-Z][a-z]{2,}\s+(?:[A-Z]\.?\s+)?[A-Z][a-z]{2,})$/);
+                    
+                    if (nameMatch) {
+                        const name = nameMatch[1].trim();
+                        
+                        // Validate: next line(s) should have phone or email
+                        const hasContactInfo = 
+                            phonePattern.test(nextLine) || 
+                            emailPattern.test(nextLine) ||
+                            phonePattern.test(nextNextLine) ||
+                            emailPattern.test(nextNextLine);
+                        
+                        // Also check if it doesn't have business suffixes
+                        const hasBusinessSuffix = /LLC|Inc|Corp|Company|Services|Properties|Management|Group/i.test(name);
+                        
+                        if (hasContactInfo && !hasBusinessSuffix && !monitoringRegex.test(name)) {
+                            if (!foundNames.find(n => n.toLowerCase() === name.toLowerCase())) {
+                                foundNames.push(name);
+                            }
+                        }
+                    }
+                }
+                
+                // Pattern 2: Traditional name patterns
+                const namePatterns = [
+                    /(?:Contact|Name|Attn|Attention|Manager|Owner|Representative):\s*([A-Z][a-z]+(?:\s+[A-Z]\.?)?\s+[A-Z][a-z]+)/gi,
+                    /([A-Z][a-z]+\s+[A-Z][a-z]+)\s*[\n\r]*\s*[\w.+-]+@/g,
+                ];
+
+                namePatterns.forEach(pattern => {
+                    const matches = [...fullText.matchAll(pattern)];
+                    matches.forEach(match => {
+                        const name = match[1].trim();
+                        const words = name.split(/\s+/);
+                        
+                        if (words.length >= 2 && words.length <= 4 && 
+                            !name.match(/LLC|Inc|Corp|Company|Services|Properties|Management|Group/i) &&
+                            words.every(w => w.length >= 2)) {
+                            
+                            if (!foundNames.find(n => n.toLowerCase() === name.toLowerCase())) {
+                                foundNames.push(name);
+                            }
+                        }
+                    });
+                });
+
+                info.personNames = foundNames;
+
+                // ====== 7. IDENTIFY COMPANY NAME (SUPER SMART) ======
+                let customerData = {
+                    companyName: null,
+                    contactName: null,
+                    email: null,
+                    phone: null,
+                    address: null
+                };
+
+                // Method 1: Look for business entity indicators (but NOT in monitoring section)
+                const nonMonitoringText = fullText.split('\n').filter(line => !monitoringRegex.test(line)).join('\n');
+                
+                const companyPatterns = [
+                    // Business with legal suffix
+                    /([\w\s&'.-]+(?:LLC|L\.L\.C\.|Inc\.|Incorporated|Corp\.|Corporation|Company|Co\.|Ltd\.|Limited|Group|Associates|Partners|Enterprises))/i,
+                    // Property/Building names  
+                    /([\w\s&'.-]+(?:Properties|Property|Management|Realty|Estate|Apartments|Condos|Building|Tower|Plaza|Center))/i,
+                    // Professional services
+                    /([\w\s&'.-]+(?:Services|Solutions|Systems|Consulting|Advisors))/i
+                ];
+
+                for (const pattern of companyPatterns) {
+                    const matches = nonMonitoringText.match(pattern);
+                    if (matches) {
+                        for (const match of matches) {
+                            const name = match.trim();
+                            // Exclude if it's a person name, monitoring company, or too long
+                            if (name.length > 3 && name.length < 100 && 
+                                !info.personNames.find(p => p === name) &&
+                                !monitoringRegex.test(name) &&
+                                !name.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/)) {
+                                
+                                info.potentialCompanies.push(name);
+                                customerData.companyName = name;
+                                break;
+                            }
+                        }
+                        if (customerData.companyName) break;
+                    }
+                }
+
+                // Method 2: Use email domain if no company found
+                if (!customerData.companyName && emailsWithContext.length > 0) {
+                    // Find non-monitoring email
+                    const nonMonitoringEmails = emailsWithContext.filter(e => 
+                        !monitoringRegex.test(e.context) && !monitoringRegex.test(e.prevLine)
+                    );
+                    
+                    if (nonMonitoringEmails.length > 0) {
+                        const domain = nonMonitoringEmails[0].domain;
+                        // Capitalize first letter of each word
+                        customerData.companyName = domain
+                            .split(/[-_]/)
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+                    }
+                }
+
+                // Method 3: First substantial line (but not a person name)
+                if (!customerData.companyName && lines.length > 0) {
+                    for (const line of lines.slice(0, 5)) { // Check first 5 lines
+                        if (line.length > 3 && line.length < 100 && 
+                            !info.personNames.find(p => p === line) &&
+                            !monitoringRegex.test(line) &&
+                            !line.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/)) {
+                            
+                            customerData.companyName = line;
+                            break;
+                        }
+                    }
+                }
+
+                // ====== 8. IDENTIFY CONTACT PERSON NAME (SUPER SMART) ======
+                // Priority 1: Names found with contact info pattern
+                if (info.personNames.length > 0) {
+                    for (const name of info.personNames) {
+                        const nameInMonitoring = info.monitoringInfo && 
+                            info.monitoringInfo.rawText.includes(name);
+                        const hasBusinessSuffix = /LLC|Inc|Corp|Company|Ltd/i.test(name);
+                        
+                        if (!nameInMonitoring && !hasBusinessSuffix && name !== customerData.companyName) {
+                            customerData.contactName = name;
+                            break;
+                        }
+                    }
+                }
+                
+                // Priority 2: Extract name from email if no contact name found
+                if (!customerData.contactName && info.emails.length > 0) {
+                    const customerEmails = emailsWithContext.filter(e => {
+                        const isMonitoring = info.monitoringInfo && 
+                            (e.email === info.monitoringInfo.email ||
+                             monitoringRegex.test(e.context) ||
+                             monitoringRegex.test(e.prevLine));
+                        return !isMonitoring;
+                    });
+                    
+                    if (customerEmails.length > 0) {
+                        const email = customerEmails[0].email;
+                        // Extract name from email (e.g., john.smith@domain.com -> John Smith)
+                        const emailLocalPart = email.split('@')[0];
+                        
+                        // Try different patterns
+                        let extractedName = null;
+                        
+                        // Pattern: john.smith or john_smith
+                        if (emailLocalPart.includes('.') || emailLocalPart.includes('_')) {
+                            const parts = emailLocalPart.split(/[._]/);
+                            if (parts.length >= 2) {
+                                extractedName = parts.map(p => 
+                                    p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+                                ).join(' ');
+                            }
+                        }
+                        // Pattern: johnsmith or jsmith
+                        else if (emailLocalPart.length >= 4) {
+                            // Capitalize first letter
+                            extractedName = emailLocalPart.charAt(0).toUpperCase() + emailLocalPart.slice(1);
+                        }
+                        
+                        if (extractedName) {
+                            customerData.contactName = extractedName;
+                        }
+                    }
+                }
+
+                // ====== 9. ASSIGN PRIMARY EMAIL (NOT MONITORING) ======
+                if (info.emails.length > 0) {
+                    // Filter out monitoring emails
+                    const customerEmails = emailsWithContext.filter(e => {
+                        const isMonitoring = info.monitoringInfo && 
+                            (e.email === info.monitoringInfo.email ||
+                             monitoringRegex.test(e.context) ||
+                             monitoringRegex.test(e.prevLine));
+                        return !isMonitoring;
+                    });
+
+                    if (customerEmails.length > 0) {
+                        // Prefer email that matches company name
+                        if (customerData.companyName) {
+                            const companyWords = customerData.companyName.toLowerCase()
+                                .replace(/llc|inc|corp|company|ltd|limited/gi, '')
+                                .split(/\s+/)
+                                .filter(w => w.length > 3);
+                            
+                            const matchingEmail = customerEmails.find(e => 
+                                companyWords.some(word => e.email.includes(word) || e.domain.includes(word))
+                            );
+                            
+                            customerData.email = matchingEmail ? matchingEmail.email : customerEmails[0].email;
+                        } else {
+                            customerData.email = customerEmails[0].email;
+                        }
+                    }
+                }
+
+                // ====== 10. ASSIGN PRIMARY PHONE (NOT MONITORING) ======
+                if (info.phones.length > 0) {
+                    customerData.phone = info.phones[0];
+                    
+                    // If monitoring phone exists, try to use a different one
+                    if (info.monitoringInfo && info.monitoringInfo.phone) {
+                        const monitoringDigits = info.monitoringInfo.phone.replace(/\D/g, '');
+                        const otherPhone = info.phones.find(p => !p.includes(monitoringDigits.substring(0, 6)));
+                        if (otherPhone) customerData.phone = otherPhone;
+                    }
+                }
+
+                // ====== 11. ASSIGN PRIMARY ADDRESS ======
+                if (info.addresses.length > 0) {
+                    customerData.address = info.addresses[0];
+                }
+
+                // ====== 12. COMPILE INTERNAL NOTES (ADMIN ONLY) ======
+                let internalNotes = '';
+                
+                if (info.prices.length > 0) {
+                    internalNotes += '=== PRICING INFORMATION ===\n';
+                    internalNotes += info.prices.join('\n') + '\n\n';
+                }
+                
+                if (info.addresses.length > 1) {
+                    internalNotes += '=== ADDITIONAL ADDRESSES ===\n';
+                    info.addresses.slice(1).forEach(addr => {
+                        internalNotes += addr + '\n';
+                    });
+                    internalNotes += '\n';
+                }
+                
+                // Additional emails (excluding both customer and monitoring)
+                const additionalEmails = info.emails.filter(e => 
+                    e !== customerData.email && 
+                    (!info.monitoringInfo || e !== info.monitoringInfo.email)
+                );
+                
+                if (additionalEmails.length > 0) {
+                    internalNotes += '=== ADDITIONAL EMAILS ===\n';
+                    additionalEmails.forEach(email => {
+                        internalNotes += email + '\n';
+                    });
+                    internalNotes += '\n';
+                }
+                
+                // Additional phones (excluding both customer and monitoring)
+                const additionalPhones = info.phones.filter((p, i) => {
+                    if (i === 0) return false; // Skip first (customer phone)
+                    if (!info.monitoringInfo || !info.monitoringInfo.phone) return true;
+                    const monitoringDigits = info.monitoringInfo.phone.replace(/\D/g, '');
+                    return !p.includes(monitoringDigits.substring(0, 6));
+                });
+                
+                if (additionalPhones.length > 0) {
+                    internalNotes += '=== ADDITIONAL PHONES ===\n';
+                    additionalPhones.forEach(phone => {
+                        internalNotes += phone + '\n';
+                    });
+                }
+
+                customerData.internalNotes = internalNotes.trim();
+
+                // Store for download
+                extractedDocumentData = {
+                    fileName: fileName,
+                    fullText: fullText,
+                    extractedInfo: customerData,
+                    allData: info
+                };
+
+                // ====== DISPLAY RESULTS ======
+                document.getElementById('docPreviewArea').classList.remove('hidden');
+
+                const fieldsDiv = document.getElementById('extractedFields');
+                const fieldLabels = {
+                    companyName: '🏢 Company Name',
+                    contactName: '👤 Contact Person',
+                    email: '📧 Primary Email',
+                    phone: '📞 Primary Phone',
+                    address: '📍 Primary Address'
+                };
+                
+                let displayHTML = Object.keys(customerData)
+                    .filter(key => key !== 'internalNotes' && customerData[key])
+                    .map(key => 
+                        `<div class="flex items-start">
+                            <span class="font-semibold mr-2">${fieldLabels[key] || key}:</span>
+                            <span class="flex-1">${customerData[key]}</span>
+                        </div>`
+                    ).join('');
+
+                // Add monitoring info if found (SEPARATE SECTION)
+                if (info.monitoringInfo) {
+                    displayHTML += `
+                        <div class="mt-3 pt-3 border-t border-green-400">
+                            <div class="font-bold text-green-200 mb-2">🔔 MONITORING COMPANY DETECTED (Separate from Customer):</div>
+                            <div class="ml-4 space-y-1">
+                                ${info.monitoringInfo.companyName ? `<div>• Company: ${info.monitoringInfo.companyName}</div>` : ''}
+                                ${info.monitoringInfo.phone ? `<div>• Phone: ${info.monitoringInfo.phone}</div>` : ''}
+                                ${info.monitoringInfo.email ? `<div>• Email: ${info.monitoringInfo.email}</div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Add admin-only notes indicator
+                if (internalNotes) {
+                    const hasPrices = info.prices.length > 0;
+                    const hasAddresses = info.addresses.length > 1;
+                    const hasEmails = additionalEmails.length > 0;
+                    const hasPhones = additionalPhones.length > 0;
+                    
+                    displayHTML += `
+                        <div class="mt-3 pt-3 border-t border-yellow-400">
+                            <div class="font-bold text-yellow-200">📋 Admin Notes Created (Hidden from Customer):</div>
+                            <div class="ml-4 text-xs text-yellow-100 mt-1">
+                                ${hasPrices ? `• ${info.prices.length} pricing item(s)<br>` : ''}
+                                ${hasAddresses ? `• ${info.addresses.length - 1} additional address(es)<br>` : ''}
+                                ${hasEmails ? `• ${additionalEmails.length} additional email(s)<br>` : ''}
+                                ${hasPhones ? `• ${additionalPhones.length} additional phone(s)` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                fieldsDiv.innerHTML = displayHTML;
+
+                // Auto-fill form fields
+                if (customerData.companyName) document.getElementById('customerCompanyName').value = customerData.companyName;
+                if (customerData.contactName) document.getElementById('customerContactName').value = customerData.contactName;
+                if (customerData.email) document.getElementById('customerEmail').value = customerData.email;
+                if (customerData.phone) document.getElementById('customerPhone').value = customerData.phone;
+                if (customerData.address) document.getElementById('customerAddress').value = customerData.address;
+
+                // Store monitoring info and notes to be saved with customer
+                if (info.monitoringInfo) {
+                    document.getElementById('customerForm').dataset.monitoringInfo = JSON.stringify(info.monitoringInfo);
+                }
+                if (internalNotes) {
+                    document.getElementById('customerForm').dataset.internalNotes = internalNotes;
+                }
+
+                // Show admin review popup
+                setTimeout(() => {
+                    const extractedCount = Object.keys(customerData).filter(k => k !== 'internalNotes' && customerData[k]).length;
+                    const hasMonitoring = info.monitoringInfo ? '✓ Monitoring company detected\n' : '';
+                    const hasNotes = internalNotes ? '✓ Admin notes created\n' : '';
+                    
+                    const reviewMessage = `📋 PLEASE REVIEW EXTRACTED INFORMATION
+
+✓ ${extractedCount} field(s) extracted
+${hasMonitoring}${hasNotes}
+⚠️ NOTE: Automatic extraction may not be 100% accurate for all document formats.
+
+PLEASE REVIEW AND VERIFY:
+• Company name is correct
+• Contact person name is accurate
+• Email and phone match the customer (not monitoring company)
+• Address is complete
+
+Edit any incorrect information before saving.`;
+                    
+                    alert(reviewMessage);
+                }, 500);
+
+                console.log('✓ Super smart extraction complete');
+            } catch (error) {
+                console.error('Error parsing document:', error);
+                alert('Error reading document. Please ensure it\'s a valid .docx file and try again.');
+            }
+        }
+        function downloadExtractedInfo() {
+            if (!extractedDocumentData) {
+                alert('No document data to download');
+                return;
+            }
+
+            const data = extractedDocumentData.extractedInfo;
+            const allData = extractedDocumentData.allData;
+            
+            const separator = '='.repeat(50);
+            
+            let text = 'EXTRACTED CONTACT INFORMATION\n';
+            text += 'Source: ' + extractedDocumentData.fileName + '\n';
+            text += 'Extracted: ' + new Date().toLocaleString() + '\n\n';
+            text += separator + '\n\n';
+            text += 'CUSTOMER INFORMATION:\n';
+            
+            if (data.companyName) text += 'Company Name: ' + data.companyName + '\n';
+            if (data.contactName) text += 'Contact Person: ' + data.contactName + '\n';
+            if (data.email) text += 'Email: ' + data.email + '\n';
+            if (data.phone) text += 'Phone: ' + data.phone + '\n';
+            if (data.address) text += 'Address: ' + data.address + '\n';
+
+            // Add monitoring info if available
+            if (allData && allData.monitoringInfo) {
+                text += '\n' + separator + '\n\n';
+                text += 'MONITORING COMPANY:\n';
+                text += 'Company: ' + (allData.monitoringInfo.companyName || 'N/A') + '\n';
+                text += 'Phone: ' + (allData.monitoringInfo.phone || 'N/A') + '\n';
+                text += 'Email: ' + (allData.monitoringInfo.email || 'N/A') + '\n';
+            }
+
+            // Add internal notes if available
+            if (data.internalNotes) {
+                text += '\n' + separator + '\n\n';
+                text += 'ADMIN NOTES (Hidden from Customer):\n';
+                text += data.internalNotes + '\n';
+            }
+
+            text += '\n' + separator + '\n\n';
+            text += 'FULL DOCUMENT TEXT:\n';
+            text += extractedDocumentData.fullText;
+
+            // Create download
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'extracted-info-' + Date.now() + '.txt';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        async function submitCustomerForm(form) {
+            const formData = new FormData(form);
+            
+            const customerData = {
+                companyName: formData.get('companyName'),
+                contactName: formData.get('contactName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                address: formData.get('address')
+            };
+            
+            // Add monitoring info if extracted
+            if (form.dataset.monitoringInfo) {
+                customerData.monitoringCompany = JSON.parse(form.dataset.monitoringInfo);
+            }
+            
+            // Add internal notes if extracted
+            if (form.dataset.internalNotes) {
+                customerData.internalNotes = form.dataset.internalNotes;
+            }
+            
+            const invoiceNumber = await addCustomer(customerData);
+            document.getElementById('customerFormArea').innerHTML = '';
+            
+            // Show success message with invoice number
+            setTimeout(() => {
+                alert(`✓ CUSTOMER CREATED SUCCESSFULLY!
+
+Company: ${customerData.companyName}
+Invoice Number: ${invoiceNumber}
+
+📋 CUSTOMER LOGIN CREDENTIALS:
+Access Code/Password: ${invoiceNumber}
+
+Give this invoice number to the customer - it's their password to access the portal!`);
+            }, 300);
+        }
+
+        function showAddJobsiteForm() {
+            if (state.customers.length === 0) {
+                alert('Please add a customer first');
+                return;
+            }
+            const formArea = document.getElementById('jobsiteFormArea');
+            formArea.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Add New Jobsite</h3>
+                    <form onsubmit="event.preventDefault(); submitJobsiteForm(this);" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" name="name" placeholder="Jobsite Name" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            <select name="customerId" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                                <option value="">Select Customer</option>
+                                ${state.customers.map(c => `<option value="${c.id}">${c.companyName || c.contactName}</option>`).join('')}
+                            </select>
+                        </div>
+                        <input type="text" name="address" placeholder="Address" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" name="contactPerson" placeholder="Site Contact (optional)" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                            <input type="tel" name="contactPhone" placeholder="Site Phone (optional)" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                        </div>
+                        <textarea name="notes" placeholder="Notes (optional)" rows="3" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300"></textarea>
+                        <div class="flex space-x-4">
+                            <button type="submit" class="crimson-gradient px-6 py-3 rounded-lg font-semibold text-gray-900 hover:opacity-90">
+                                Save Jobsite
+                            </button>
+                            <button type="button" onclick="document.getElementById('jobsiteFormArea').innerHTML = ''" class="bg-white px-6 py-3 rounded-lg text-gray-900 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        async function submitJobsiteForm(form) {
+            const formData = new FormData(form);
+            await addJobsite({
+                name: formData.get('name'),
+                customerId: formData.get('customerId'),
+                address: formData.get('address'),
+                contactPerson: formData.get('contactPerson'),
+                contactPhone: formData.get('contactPhone'),
+                notes: formData.get('notes')
+            });
+            document.getElementById('jobsiteFormArea').innerHTML = '';
+        }
+
+        function showAddWorkLogForm() {
+            if (state.customers.length === 0 || state.jobsites.length === 0) {
+                alert('Please add customers and jobsites first');
+                return;
+            }
+            const formArea = document.getElementById('workLogFormArea');
+            formArea.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Add Work Log</h3>
+                    <form onsubmit="event.preventDefault(); submitWorkLogForm(this);" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <select name="customerId" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                                <option value="">Select Customer</option>
+                                ${state.customers.map(c => `<option value="${c.id}">${c.companyName || c.contactName}</option>`).join('')}
+                            </select>
+                            <select name="jobsiteId" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                                <option value="">Select Jobsite</option>
+                                ${state.jobsites.map(j => `<option value="${j.id}">${j.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input type="text" name="serviceType" placeholder="Service Type (e.g., Fire Alarm Inspection)" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            <input type="date" name="serviceDate" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                        </div>
+                        <select name="technician" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                            <option value="">Select Technician</option>
+                            <option value="Tyler Davis">Tyler Davis</option>
+                            <option value="Terry Atherton">Terry Atherton</option>
+                            <option value="Michael Fotta">Michael Fotta</option>
+                        </select>
+                        <textarea name="description" placeholder="Work Description" rows="4" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required></textarea>
+                        <div class="flex space-x-4">
+                            <button type="submit" class="crimson-gradient px-6 py-3 rounded-lg font-semibold text-gray-900 hover:opacity-90">
+                                Save Work Log
+                            </button>
+                            <button type="button" onclick="document.getElementById('workLogFormArea').innerHTML = ''" class="bg-white px-6 py-3 rounded-lg text-gray-900 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        async function submitWorkLogForm(form) {
+            const formData = new FormData(form);
+            await addWorkLog({
+                customerId: formData.get('customerId'),
+                jobsiteId: formData.get('jobsiteId'),
+                serviceType: formData.get('serviceType'),
+                serviceDate: formData.get('serviceDate'),
+                technician: formData.get('technician'),
+                description: formData.get('description'),
+                status: 'Completed'
+            });
+            document.getElementById('workLogFormArea').innerHTML = '';
+        }
+
+        function showAddFileForm() {
+            if (state.customers.length === 0) {
+                alert('Please add a customer first');
+                return;
+            }
+            const formArea = document.getElementById('fileFormArea');
+            formArea.innerHTML = `
+                <div class="bg-gray-50 rounded-lg p-6 mb-6">
+                    <h3 class="text-xl font-bold text-gray-900 mb-4">Upload File</h3>
+                    <form onsubmit="event.preventDefault(); submitFileForm(this);" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <select name="customerId" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                                <option value="">Select Customer</option>
+                                ${state.customers.map(c => `<option value="${c.id}">${c.companyName || c.contactName}</option>`).join('')}
+                            </select>
+                            <select name="jobsiteId" class="px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300">
+                                <option value="">Select Jobsite (optional)</option>
+                                ${state.jobsites.map(j => `<option value="${j.id}">${j.name}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-gray-900 font-semibold mb-2">Upload File (PDF, Image, or Document)</label>
+                            <input 
+                                type="file" 
+                                name="fileUpload" 
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.txt"
+                                class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-red-900 file:text-gray-900 hover:file:bg-red-800"
+                                onchange="handleFileSelect(this)"
+                                required
+                            >
+                            <div class="text-xs text-gray-300 mt-1">Max file size: 4MB (PDFs, images, documents)</div>
+                        </div>
+                        <div>
+                            <input type="text" name="fileName" placeholder="File Name (auto-filled from upload)" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" readonly>
+                        </div>
+                        <div>
+                            <select name="fileType" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300" required>
+                                <option value="Inspection Report">Inspection Report</option>
+                                <option value="Service Invoice">Service Invoice</option>
+                                <option value="Certificate">Certificate</option>
+                                <option value="Photo">Photo</option>
+                                <option value="Proposal">Proposal</option>
+                                <option value="Contract">Contract</option>
+                                <option value="Other">Other Document</option>
+                            </select>
+                        </div>
+                        <div class="bg-white rounded-lg p-4">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="requiresSignature" class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                                <span class="ml-3 text-gray-900 font-semibold">📝 Requires Customer Signature</span>
+                            </label>
+                            <p class="text-xs text-gray-300 mt-2 ml-8">Check this if the customer needs to sign and return this document</p>
+                        </div>
+                        <textarea name="description" placeholder="File Description (optional)" rows="3" class="w-full px-4 py-3 rounded-lg bg-white text-gray-900 border border-gray-300"></textarea>
+                        <input type="hidden" name="fileContent" value="">
+                        <input type="hidden" name="fileExtension" value="">
+                        <div class="flex space-x-4">
+                            <button type="submit" class="crimson-gradient px-6 py-3 rounded-lg font-semibold text-gray-900 hover:opacity-90">
+                                Upload File
+                            </button>
+                            <button type="button" onclick="document.getElementById('fileFormArea').innerHTML = ''" class="bg-white px-6 py-3 rounded-lg text-gray-900 hover:bg-gray-50">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+        }
+
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Check file size (4MB limit)
+            if (file.size > 4 * 1024 * 1024) {
+                alert('File is too large. Maximum size is 4MB.');
+                input.value = '';
+                return;
+            }
+
+            // Auto-fill file name
+            const form = input.closest('form');
+            form.fileName.value = file.name;
+            
+            // Get file extension
+            const extension = file.name.split('.').pop().toLowerCase();
+            form.fileExtension.value = extension;
+
+            // Read file as base64
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                form.fileContent.value = e.target.result;
+            };
+            reader.onerror = function() {
+                alert('Error reading file. Please try again.');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function submitFileForm(form) {
+            const formData = new FormData(form);
+            
+            if (!formData.get('fileContent')) {
+                alert('Please select a file to upload');
+                return;
+            }
+
+            const requiresSignature = form.requiresSignature.checked;
+
+            await addFile({
+                customerId: formData.get('customerId'),
+                jobsiteId: formData.get('jobsiteId'),
+                fileName: formData.get('fileName'),
+                fileType: formData.get('fileType'),
+                description: formData.get('description'),
+                fileContent: formData.get('fileContent'),
+                fileExtension: formData.get('fileExtension'),
+                requiresSignature: requiresSignature,
+                signatureStatus: requiresSignature ? 'pending' : 'none'
+            });
+            document.getElementById('fileFormArea').innerHTML = '';
+        }
+
+        function viewFile(fileId, viewSigned = false) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+
+            // Choose which version to view
+            const contentToView = (viewSigned && file.signedVersion) ? file.signedVersion : file.fileContent;
+
+            // Check if it's a base64 file
+            if (contentToView && contentToView.startsWith('data:')) {
+                const extension = file.fileExtension || '';
+                
+                // Handle images (including signatures)
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension.toLowerCase()) || viewSigned) {
+                    const popup = window.open('', '_blank');
+                    popup.document.write(`
+                        <html>
+                            <head>
+                                <title>${file.fileName}${viewSigned ? ' (Signed)' : ''}</title>
+                                <style>
+                                    body { margin: 0; padding: 20px; background: #1a1a1a; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+                                    img { max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+                                </style>
+                            </head>
+                            <body>
+                                <img src="${contentToView}" alt="${file.fileName}">
+                            </body>
+                        </html>
+                    `);
+                }
+                // Handle PDFs
+                else if (extension.toLowerCase() === 'pdf') {
+                    const popup = window.open('', '_blank');
+                    popup.document.write(`
+                        <html>
+                            <head>
+                                <title>${file.fileName}</title>
+                                <style>
+                                    body { margin: 0; padding: 0; }
+                                    iframe { width: 100%; height: 100vh; border: none; }
+                                </style>
+                            </head>
+                            <body>
+                                <iframe src="${contentToView}"></iframe>
+                            </body>
+                        </html>
+                    `);
+                }
+                // Handle other files - offer download
+                else {
+                    downloadFile(fileId);
+                }
+            } else {
+                // Fallback for text content
+                alert(`File: ${file.fileName}\n\nContent:\n${contentToView || 'No content available'}`);
+            }
+        }
+
+        function downloadFile(fileId) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file || !file.fileContent) {
+                alert('File not available for download');
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = file.fileContent;
+            link.download = file.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Upload Signed PDF Functions
+        function downloadOriginalPDF(fileId) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+            
+            const link = document.createElement('a');
+            link.href = file.fileContent;
+            link.download = file.fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function showUploadSignedModal(fileId) {
+            const file = state.files.find(f => f.id === fileId);
+            if (!file) return;
+            
+            const modal = document.createElement('div');
+            modal.id = 'uploadSignedModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-8 max-w-2xl w-full">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Upload Signed Contract</h2>
+                    
+                    <div class="bg-blue-50 border-l-4 border-blue-600 p-4 mb-6">
+                        <p class="text-blue-900 font-semibold mb-2">📋 Instructions:</p>
+                        <ol class="text-blue-800 text-sm list-decimal list-inside space-y-1">
+                            <li>Ensure you have <strong>signed and completed</strong> all required fields</li>
+                            <li>Document must be in <strong>PDF format</strong></li>
+                            <li>File should be clear and readable</li>
+                            <li>Maximum file size: 10MB</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-bold mb-2">Upload Signed PDF:</label>
+                        <div class="border-2 border-dashed border-gray-400 rounded-lg p-8 text-center">
+                            <input 
+                                type="file" 
+                                id="signedPdfUpload" 
+                                accept=".pdf,application/pdf"
+                                onchange="handleSignedPdfUpload(this, '${fileId}')"
+                                class="hidden"
+                            >
+                            <label for="signedPdfUpload" class="cursor-pointer">
+                                <div class="text-gray-600 mb-2">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                                <span class="text-blue-600 hover:text-blue-800 font-semibold">Click to select signed PDF</span>
+                                <p class="text-xs text-gray-500 mt-1">PDF only, max 10MB</p>
+                            </label>
+                        </div>
+                        
+                        <div id="uploadPreview" class="hidden mt-4 p-4 bg-green-50 rounded-lg border-2 border-green-500">
+                            <p class="text-sm font-semibold text-green-900 mb-2">✓ File Ready to Upload:</p>
+                            <p id="uploadFileName" class="text-sm text-green-800"></p>
+                            <p id="uploadFileSize" class="text-xs text-green-700 mt-1"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-6">
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox" id="confirmComplete" class="mt-1 mr-3 h-5 w-5">
+                            <span class="text-sm text-gray-900">
+                                <strong>I confirm</strong> that this document is <strong>signed and completed</strong> 
+                                with all required information filled out accurately.
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <div class="flex space-x-4">
+                        <button 
+                            onclick="submitSignedPdf('${fileId}')" 
+                            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg transition"
+                        >
+                            ✓ Submit Signed Contract
+                        </button>
+                        <button 
+                            onclick="closeUploadSignedModal()" 
+                            class="px-8 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-4 rounded-lg transition"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+
+        let uploadedSignedPdfData = null;
+
+        function handleSignedPdfUpload(input, fileId) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (file.type !== 'application/pdf') {
+                alert('Please upload a PDF file only');
+                input.value = '';
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File is too large. Maximum size is 10MB.');
+                input.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                uploadedSignedPdfData = e.target.result;
+                
+                document.getElementById('uploadPreview').classList.remove('hidden');
+                document.getElementById('uploadFileName').textContent = file.name;
+                document.getElementById('uploadFileSize').textContent = 'Size: ' + (file.size / 1024).toFixed(2) + ' KB';
+            };
+            reader.onerror = function() {
+                alert('Error reading file. Please try again.');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function submitSignedPdf(fileId) {
+            if (!uploadedSignedPdfData) {
+                alert('Please select a PDF file to upload');
+                return;
+            }
+
+            const confirmCheckbox = document.getElementById('confirmComplete');
+            if (!confirmCheckbox.checked) {
+                alert('Please confirm that the document is signed and completed');
+                return;
+            }
+
+            const fileIndex = state.files.findIndex(f => f.id === fileId);
+            if (fileIndex !== -1) {
+                state.files[fileIndex].signatureStatus = 'signed';
+                state.files[fileIndex].signedAt = new Date().toISOString();
+                state.files[fileIndex].signedVersion = uploadedSignedPdfData;
+                state.files[fileIndex].signerName = state.currentUser.data.companyName || state.currentUser.data.contactName;
+                
+                await saveToStorage(STORAGE_KEYS.FILES, state.files);
+                
+                closeUploadSignedModal();
+                render();
+                
+                alert('✓ Signed contract uploaded successfully!\n\nYour provider will review the signed document.');
+            }
+        }
+
+        function closeUploadSignedModal() {
+            const modal = document.getElementById('uploadSignedModal');
+            if (modal) {
+                modal.remove();
+            }
+            uploadedSignedPdfData = null;
+        }
+
+        function downloadSignedPDF(fileName, signedPdfData) {
+            const link = document.createElement('a');
+            link.href = signedPdfData;
+            const baseName = fileName.replace(/\.[^/.]+$/, '');
+            link.download = baseName + '_SIGNED.pdf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        async function handleImportFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (!file.name.endsWith('.json')) {
+                alert('Please upload a JSON file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importData = JSON.parse(e.target.result);
+                    
+                    // Validate data structure
+                    if (!importData.customers || !importData.jobsites || !importData.workLogs || !importData.files) {
+                        throw new Error('Invalid backup file format');
+                    }
+
+                    // Merge data (add to existing)
+                    state.customers = [...state.customers, ...importData.customers];
+                    state.jobsites = [...state.jobsites, ...importData.jobsites];
+                    state.workLogs = [...state.workLogs, ...importData.workLogs];
+                    state.files = [...state.files, ...importData.files];
+
+                    // Save to storage
+                    await saveToStorage(STORAGE_KEYS.CUSTOMERS, state.customers);
+                    await saveToStorage(STORAGE_KEYS.JOBSITES, state.jobsites);
+                    await saveToStorage(STORAGE_KEYS.WORK_LOGS, state.workLogs);
+                    await saveToStorage(STORAGE_KEYS.FILES, state.files);
+
+                    closeImportModal();
+                    render();
+
+                    alert(`✓ DATA IMPORTED SUCCESSFULLY!
+
+Imported:
+• ${importData.customers.length} customers
+• ${importData.jobsites.length} jobsites
+• ${importData.workLogs.length} work logs
+• ${importData.files.length} files
+
+Total Now:
+• ${state.customers.length} customers
+• ${state.jobsites.length} jobsites
+• ${state.workLogs.length} work logs
+• ${state.files.length} files`);
+
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('❌ Error importing data. Please make sure this is a valid backup file from the Platinum Portal.');
+                }
+            };
+            reader.onerror = function() {
+                alert('Error reading file. Please try again.');
+            };
+            reader.readAsText(file);
+        }
+
+        // Export all data
+        function exportAllData() {
+            const exportData = {
+                customers: state.customers,
+                jobsites: state.jobsites,
+                workLogs: state.workLogs,
+                files: state.files,
+                settings: state.settings,
+                exportDate: new Date().toISOString()
+            };
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `platinum-portal-backup-${Date.now()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            alert('✓ Data exported successfully!');
+        }
+
+        // Show import modal
+        function showImportModal() {
+            const modal = document.createElement('div');
+            modal.id = 'importModal';
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-8 max-w-md w-full">
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">Import Data</h2>
+                    <p class="text-gray-600 mb-6">Upload a JSON backup file to import data into the portal.</p>
+                    
+                    <div class="mb-6">
+                        <input 
+                            type="file" 
+                            accept=".json"
+                            onchange="handleImportFile(this)"
+                            class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg"
+                        >
+                    </div>
+                    
+                    <div class="flex space-x-4">
+                        <button onclick="closeImportModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 rounded-lg">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Close import modal
+        function closeImportModal() {
+            const modal = document.getElementById('importModal');
+            if (modal) modal.remove();
+        }
+
+        // View signed file
+        function viewSignedFile(fileId) {
+            viewFile(fileId, true);
+        }
+
+        // Initialize the app when page loads
+        window.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
